@@ -15,12 +15,16 @@ def main(url, filename):
 
     soup = get_comments(driver, soup, pause)
 
+    soup = get_reply(driver, soup, pause)
+
     df = get_scraping(soup)
 
-    #close_driver(driver)
+    close_driver(driver)
 
     filepath ='C:\\Users\\ATOU\\OneDrive - Axess OnLine\\Documents\\1. PROJETS\\PYTHON - LinkedIn Feed Extractor\\Files\\' + filename
     export(df, filepath)
 
 if __name__ == '__main__':
-    main(sys.argv[2], sys.argv[3])
+    main('https://www.linkedin.com/company/la-boucherie-restaurants/posts/?feedView=all', 'lbchrie.csv')
+   #main(sys.argv[2], sys.argv[3])
+

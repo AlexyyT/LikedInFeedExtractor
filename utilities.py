@@ -85,7 +85,7 @@ def get_feed(driver, url, pause):
 
 
 def get_comments(driver, soup, pause):
-    pause = pause*1.5
+    pause = pause
     posts_class = 'ember-view occludable-update'
     body = driver.find_element(By.CLASS_NAME, 'render-mode-VANILLA.nav-v2.ember-application.icons-loaded.boot-complete')
 
@@ -115,7 +115,7 @@ def get_comments(driver, soup, pause):
                     btn.click()
                 except:
                     # Clique que la surcouche body.
-                    wait = WebDriverWait(driver, 20)
+                    wait = WebDriverWait(driver, 10)
                     executor(driver, body)
                     try:
                         # Clique sur premier post après avoir enlevé le layer du body.
@@ -138,7 +138,7 @@ def get_comments(driver, soup, pause):
                     btn.click()
                 except:
                     # Clique que la surcouche body.
-                    wait = WebDriverWait(driver, 20)
+                    wait = WebDriverWait(driver, 10)
                     executor(driver, body)
                     try:
                         # Clique sur le premier post après avoir enlevé le layer ldu body.
@@ -155,6 +155,69 @@ def get_comments(driver, soup, pause):
     return soup
 
 
+def get_reply(driver, soup, pause):
+    pause = pause
+
+    body = driver.find_element(By.CLASS_NAME, 'render-mode-VANILLA.nav-v2.ember-application.icons-loaded.boot-complete')
+    verbatim_class = 'comments-comment-item comments-comments-list__comment-item'
+    #Zc : Zone de commentaires - Elle comprend un commentaire ainsi que les potentielles réponses au commentaire.
+    zc = soup.find_all('article', {'class': verbatim_class})
+
+    for i in range(len(zc)):
+        #Si la zone du commentaire nécessite de charger des réponses précédentes.
+        if 'Charger les réponses précédentes' not in zc[i].text:
+            pass
+        else:
+            try:
+                # Trouve et clic deux fois sur le bouton pour afficher les commentaires
+                time.sleep(pause)
+                PATH = "//article[@id='" + zc[i]['id'] + "']/div[4]/div[3]/div/button"
+                btn = driver.find_element(By.XPATH, PATH)
+                btn.click()
+                time.sleep(pause)
+            except:
+                # Clique que la surcouche body.
+                wait = WebDriverWait(driver, 10)
+                executor(driver, body)
+                try:
+                    # Clique sur le premier post après avoir enlevé le layer ldu body.
+                    showmore_link = wait.until(EC.element_to_be_clickable((By.XPATH, PATH)))
+                    showmore_link.click()
+                    time.sleep(pause)
+                    showmore_link.click()
+                except ElementClickInterceptedException:
+                    print("Trying to click on the button again")
+                    driver.execute_script("arguments[0].click()", showmore_link)
+
+
+        # Si la zone du commentaire nécessite d'afficher plus de réponses.
+        if 'Afficher plus de réponses' not in zc[i].text:
+            pass
+        else:
+            try:
+                time.sleep(pause)
+                PATH = "//article[@id='" + zc[i]['id'] + "']/div[4]/div[3]/div/button"
+                btn = driver.find_element(By.XPATH, PATH)
+                btn.click()
+                time.sleep(pause)
+            except:
+                # Clique que la surcouche body.
+                wait = WebDriverWait(driver, 10)
+                executor(driver, body)
+                try:
+                    # Clique sur le premier post après avoir enlevé le layer ldu body.
+                    showmore_link = wait.until(EC.element_to_be_clickable((By.XPATH, PATH)))
+                    showmore_link.click()
+                    time.sleep(pause)
+                    showmore_link.click()
+                except ElementClickInterceptedException:
+                    print("Trying to click on the button again")
+                    driver.execute_script("arguments[0].click()", showmore_link)
+
+    soup = get_soup(driver)
+    return soup
+
+
 def get_scraping(soup):
     # Classes pour trouver tous les commentaires
     posts_class = 'ember-view occludable-update'
@@ -166,8 +229,9 @@ def get_scraping(soup):
     author_class = 'comments-post-meta__name-text hoverable-link-text mr1'
     date_verbatim_class = 'comments-comment-item__timestamp t-12 t-black--light t-normal mr1'
     v_classe = 'comments-comment-item__main-content feed-shared-main-content--comment t-14 t-black t-normal'
+    reponses = 'comments-comment-item comments-reply-item reply-item'
 
-    # Df pour stocker les élements et exporter en .csv
+    # Df pour stocker les éléments et exporter en .csv
     df = pd.DataFrame(columns=['Post', 'Post Date', 'Author', 'Verbatim', 'Verbatim Date', 'Date scraping'])
 
     # une fois que tous les commentaires sont ouverts, nouvelle soup pour scraper les éléments
@@ -182,6 +246,20 @@ def get_scraping(soup):
         if 'commentaire' not in posts[i].text:
             pass
         else:
+
+            #Auteur du post
+            #  ???
+
+            # Contenu du post
+            title = soup.find('div', {'class': posts_class, 'id': post_id}) \
+                .find_all('div', {'class': titre_class})
+            contenu_post = title[0].text.replace('\n', '').replace('\xa0', ' ')
+
+            # Date du post
+            date = soup.find('div', {'class': posts_class, 'id': post_id}) \
+                .find_all('div', {'class': date_post_class})
+            date_post = date[0].text[:date[0].text.find(" • ")]
+
             # Récupère l'ensemble des commentaires sur le post
             verbatim = soup.find('div', {'class': posts_class, 'id': post_id})\
                 .find_all('article', {'class': verbatim_class})
@@ -190,17 +268,7 @@ def get_scraping(soup):
             for i in range(len(verbatim)):
                 article_id = verbatim[i]['id']
 
-                # Contenu du post
-                title = soup.find('div', {'class': posts_class, 'id': post_id})\
-                    .find_all('div', {'class': titre_class})
-                contenu_post = title[0].text.replace('\n', '').replace('\xa0', ' ')
-
-                # Date du post
-                date = soup.find('div', {'class': posts_class, 'id': post_id})\
-                    .find_all('div',{'class': date_post_class})
-                date_post = date[0].text[:date[0].text.find(" • ")]
-
-                # Autheur du verbatim
+                # Auteur du verbatim
                 author = soup.find('div', {'class': posts_class, 'id': post_id})\
                     .find('article', {'class': verbatim_class, 'id': article_id})\
                     .find_all('span', {'class': author_class})
@@ -219,7 +287,7 @@ def get_scraping(soup):
                     .find('article', {'class': verbatim_class, 'id': article_id})\
                     .find_all('time', {'class': date_verbatim_class})
 
-                # Ligne à ajouter dans de df
+                # Ligne liée au commentaire, à ajouter dans de df
                 new_row = {'Post': contenu_post,
                            'Post Date': date_post,
                            'Author': auteur,
@@ -228,9 +296,56 @@ def get_scraping(soup):
                            'Date scraping': datetime.now().strftime("%d/%m/%Y")
                            }
 
-                # Ajout de la ligne dans le df
+                # Ajout de la ligne contenant le commentaire dans le df
                 df = df.append(new_row, ignore_index=True)
 
+
+                # Zone de réponse  contient toutes les potentielles réponses à un commentaire.
+                zr = soup.find('div', {'class': posts_class, 'id': post_id}).find('article', {'class': verbatim_class, 'id': article_id}).find_all('article', {'class': reponses})
+                # Si la zone de réponse contient des réponses - Scrape et ajout les réponses au df.
+                if len(zr) > 0:
+                    # Pour chaque réponse : permet de gérer s'il y a plusieurs réponses
+                    for i in range(len(zr)):
+                        #Numéro du l'article lié à la réponse à scrapper
+                        reponse_id = zr[i]['id']
+
+                        # Auteur
+                        author = soup.find('div', {'class': posts_class, 'id': post_id})\
+                            .find('article', {'class': verbatim_class, 'id': article_id})\
+                            .find('article', {'class': reponses, 'id': reponse_id})\
+                            .find('span', {'class': 'comments-post-meta__name-text hoverable-link-text mr1'})
+
+                        auteur = author.text
+                        auteur = auteur[1:(auteur.find('Voir'))]
+
+                        # Verbatim
+                        rep = soup.find('div', {'class': posts_class, 'id': post_id})\
+                            .find('article', {'class': verbatim_class, 'id': article_id})\
+                            .find('article', {'class': reponses, 'id': reponse_id})\
+                            .find('span', {'class': 'comments-comment-item__main-content feed-shared-main-content--comment t-14 t-black t-normal'})
+
+                        commentaire = rep.text
+                        commentaire = commentaire.replace('\n', '')
+
+                        # Date
+                        time_rep = soup.find('div', {'class': posts_class, 'id': post_id})\
+                            .find('article', {'class': verbatim_class, 'id': article_id})\
+                            .find('article', {'class': reponses, 'id': reponse_id})\
+                            .find('time', {'class': 'comments-comment-item__timestamp t-12 t-black--light t-normal mr1'})
+
+                        date_verbatim = time_rep.text
+
+                        # Ligne liée à la réponse au commentaire à ajouter dans le df
+                        new_row = {'Post': contenu_post,
+                                   'Post Date': date_post,
+                                   'Auteur': auteur,
+                                   'Verbatim': commentaire,
+                                   'Verbatim Date': date_verbatim,
+                                   'Date scraping': datetime.now().strftime("%d/%m/%Y")
+                                   }
+
+                        # Ajout de la ligne contenant le commentaire dans le df
+                        df = df.append(new_row, ignore_index=True)
     return df
 
 

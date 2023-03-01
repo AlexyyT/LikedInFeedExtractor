@@ -39,7 +39,7 @@ Scrapper les commentaires - Fonctions à implémenter:
 - [x] Exporter les résultats en .csv
 
 Ajouts possibles :
-- [ ] Scraper les réponses aux commentaires.
+- [X] Scraper les réponses aux commentaires.
 - [ ] Scraper les commentaires sur les posts partagés.
 
 
